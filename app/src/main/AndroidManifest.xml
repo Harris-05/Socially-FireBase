@@ -11,6 +11,17 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SMD_Assignment_i230796">
+        <service
+            android:name=".IncomingCallService"
+            android:enabled="true"
+            android:exported="true"></service>
+
+        <activity
+            android:name=".outgoing_call"
+            android:exported="false" />
+        <activity
+            android:name=".incoming_call"
+            android:exported="false" />
         <activity
             android:name=".AddChoiceActivity"
             android:exported="false"
@@ -51,17 +62,16 @@
         <activity android:name=".kyan_colman_profile" />
         <activity android:name=".post_picture_screen" />
         <activity android:name=".comment" />
+        <activity android:name=".comment" />
         <activity android:name=".StoryViewerActivity" />
-        <activity android:name=".StoryListActivity"/>
+        <activity android:name=".StoryListActivity" />
         <activity
             android:name=".FollowRequestActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-
-        <activity android:name=".comment" />
-        <activity android:name=".add_post"/>
-        <activity android:name=".UserListActivity"/>
+        <activity android:name=".add_post" />
+        <activity android:name=".UserListActivity" />
     </application>
 
 </manifest>

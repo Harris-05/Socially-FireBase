@@ -17,7 +17,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import java.io.ByteArrayOutputStream
-import kotlin.jvm.java
 
 class chat_screen : AppCompatActivity() {
 
@@ -50,31 +49,12 @@ class chat_screen : AppCompatActivity() {
         btnCamera = findViewById(R.id.btnCamera)
         imgProfile = findViewById(R.id.imgProfile)
         tvChatName = findViewById(R.id.tvChatName)
-        btncall = findViewById<ImageView>(R.id.btnVideo)
-        btncall.setOnClickListener {
-            // Step 1: Show popup for call type
-            val options = arrayOf("Audio Call", "Video Call")
-
-            AlertDialog.Builder(this)
-                .setTitle("Choose Call Type")
-                .setItems(options) { _, which ->
-                    val callType = if (which == 0) "audio" else "video"
-                    initiateCall(callType)
-                }
-                .show()
-        }
-
-
+        btncall = findViewById(R.id.btnVideo)
 
         chatId = intent.getStringExtra("chatId")
         receiverId = intent.getStringExtra("receiverId")
         receiverName = intent.getStringExtra("receiverName")
         receiverProfileBase64 = intent.getStringExtra("receiverProfileBase64")
-
-        val chatId = intent.getStringExtra("chatId")
-        val receiverId = intent.getStringExtra("receiverId")
-        val receiverName = intent.getStringExtra("receiverName")
-        val receiverProfileBase64 = intent.getStringExtra("receiverProfileBase64")
 
         if (chatId.isNullOrEmpty() || receiverId.isNullOrEmpty()) {
             Toast.makeText(this, "Chat data missing", Toast.LENGTH_SHORT).show()
@@ -100,8 +80,17 @@ class chat_screen : AppCompatActivity() {
             initMessagesRef(chatId!!)
         } else if (!receiverId.isNullOrEmpty()) {
             fetchOrCreateChatForReceiver()
-        } else {
-            throw IllegalArgumentException("Chat cannot be opened without chatId or receiverId")
+        }
+
+        // 🔹 Call button logic
+        btncall.setOnClickListener {
+            val options = arrayOf("Audio Call", "Video Call")
+            AlertDialog.Builder(this)
+                .setTitle("Choose Call Type")
+                .setItems(options) { _, which ->
+                    val callType = if (which == 0) "audio" else "video"
+                    initiateCall(callType)
+                }.show()
         }
     }
 
@@ -140,7 +129,6 @@ class chat_screen : AppCompatActivity() {
         val chatsRef = FirebaseDatabase.getInstance().getReference("chats")
         val canonicalId = if (currentUserId < receiverId!!) "${currentUserId}_${receiverId}" else "{$receiverId}_${currentUserId}"
 
-        // Check if a chat exists with this canonicalId
         chatsRef.orderByChild("chatId").equalTo(canonicalId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -148,7 +136,6 @@ class chat_screen : AppCompatActivity() {
                         chatId = snapshot.children.first().key
                         initMessagesRef(chatId!!)
                     } else {
-                        // If chat doesn't exist (receiver opens first time), create it
                         chatId = chatsRef.push().key
                         val chatData = mapOf(
                             "chatId" to canonicalId,
@@ -212,11 +199,13 @@ class chat_screen : AppCompatActivity() {
         val messageId = messagesRef.push().key ?: return
         val timestamp = System.currentTimeMillis()
 
-        val message = ChatMessage(messageId, currentUserId, "", timestamp,base64Image , false)
+        val message = ChatMessage(messageId, currentUserId, "", timestamp, base64Image, false)
         messagesRef.child(messageId).setValue(message)
         FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
             .child("lastMessage").setValue("[Image]")
     }
+
+    // ✅ FIXED initiateCall()
     private fun initiateCall(callType: String) {
         val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val selectedUid = receiverId ?: return
@@ -236,16 +225,20 @@ class chat_screen : AppCompatActivity() {
             .child(callId)
             .setValue(callData)
             .addOnSuccessListener {
-                val intent = Intent(this, call_screen::class.java)
+                // 🔹 Go to outgoing_call screen
+                val intent = Intent(this, outgoing_call::class.java)
                 intent.putExtra("callId", callId)
                 intent.putExtra("callType", callType)
                 intent.putExtra("receiverId", selectedUid)
+                intent.putExtra("receiverName", receiverName)
+                intent.putExtra("receiverProfileBase64", receiverProfileBase64)
                 startActivity(intent)
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to initiate call.", Toast.LENGTH_SHORT).show()
             }
     }
+
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos)
