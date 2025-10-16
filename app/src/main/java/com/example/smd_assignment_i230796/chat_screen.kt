@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import java.io.ByteArrayOutputStream
+import kotlin.jvm.java
 
 class chat_screen : AppCompatActivity() {
 
@@ -26,7 +27,7 @@ class chat_screen : AppCompatActivity() {
     private lateinit var btnCamera: ImageView
     private lateinit var imgProfile: ImageView
     private lateinit var tvChatName: TextView
-
+    private lateinit var btncall: ImageView
     private lateinit var messagesRef: DatabaseReference
     private lateinit var messageList: MutableList<ChatMessage>
     private lateinit var adapter: MessageAdapter
@@ -49,6 +50,21 @@ class chat_screen : AppCompatActivity() {
         btnCamera = findViewById(R.id.btnCamera)
         imgProfile = findViewById(R.id.imgProfile)
         tvChatName = findViewById(R.id.tvChatName)
+        btncall = findViewById<ImageView>(R.id.btnVideo)
+        btncall.setOnClickListener {
+            // Step 1: Show popup for call type
+            val options = arrayOf("Audio Call", "Video Call")
+
+            AlertDialog.Builder(this)
+                .setTitle("Choose Call Type")
+                .setItems(options) { _, which ->
+                    val callType = if (which == 0) "audio" else "video"
+                    initiateCall(callType)
+                }
+                .show()
+        }
+
+
 
         chatId = intent.getStringExtra("chatId")
         receiverId = intent.getStringExtra("receiverId")
@@ -201,7 +217,35 @@ class chat_screen : AppCompatActivity() {
         FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
             .child("lastMessage").setValue("[Image]")
     }
+    private fun initiateCall(callType: String) {
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val selectedUid = receiverId ?: return
 
+        val callId = if (currentUid < selectedUid) "${currentUid}_${selectedUid}" else "${selectedUid}_${currentUid}"
+
+        val callData = mapOf(
+            "callerId" to currentUid,
+            "receiverId" to selectedUid,
+            "type" to callType,
+            "status" to "ringing",
+            "channelName" to callId,
+            "timestamp" to ServerValue.TIMESTAMP
+        )
+
+        FirebaseDatabase.getInstance().getReference("calls")
+            .child(callId)
+            .setValue(callData)
+            .addOnSuccessListener {
+                val intent = Intent(this, call_screen::class.java)
+                intent.putExtra("callId", callId)
+                intent.putExtra("callType", callType)
+                intent.putExtra("receiverId", selectedUid)
+                startActivity(intent)
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to initiate call.", Toast.LENGTH_SHORT).show()
+            }
+    }
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos)
