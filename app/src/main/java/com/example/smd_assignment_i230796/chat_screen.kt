@@ -1,5 +1,6 @@
 package com.example.smd_assignment_i230796
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.database.ContentObserver
@@ -30,6 +31,7 @@ class chat_screen : BaseActivity() {
     private lateinit var etMessage: EditText
     private lateinit var btnSend: ImageView
     private lateinit var btnCamera: ImageView
+    private lateinit var btngallery: ImageView
     private lateinit var imgProfile: ImageView
     private lateinit var tvChatName: TextView
     private lateinit var btncall: ImageView
@@ -39,7 +41,7 @@ class chat_screen : BaseActivity() {
 
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     private val IMAGE_PICK = 101
-
+    private val CAMERA_REQUEST_CODE =102
     private var chatId: String? = null
     private var receiverId: String? = null
     private var receiverName: String? = null
@@ -57,6 +59,8 @@ class chat_screen : BaseActivity() {
         imgProfile = findViewById(R.id.imgProfile)
         tvChatName = findViewById(R.id.tvChatName)
         btncall = findViewById(R.id.btnVideo)
+        btngallery = findViewById(R.id.btnGallery)
+
 
         chatId = intent.getStringExtra("chatId")
         receiverId = intent.getStringExtra("receiverId")
@@ -81,7 +85,20 @@ class chat_screen : BaseActivity() {
         recyclerMessages.adapter = adapter
 
         btnSend.setOnClickListener { sendMessage() }
-        btnCamera.setOnClickListener { pickImage() }
+        btngallery.setOnClickListener { pickImage() }
+        btnCamera.setOnClickListener {
+            try {
+                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                if (cameraIntent.resolveActivity(packageManager) != null) {
+                    startActivityForResult(cameraIntent, CAMERA_REQUEST_CODE)
+                } else {
+                    Toast.makeText(this, "Camera not available", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Camera error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+
 
         if (!chatId.isNullOrEmpty()) {
             initMessagesRef(chatId!!)
@@ -328,9 +345,14 @@ class chat_screen : BaseActivity() {
         messagesRef.child(messageId).setValue(message)
         etMessage.text.clear()
 
-        FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
-            .child("lastMessage").setValue(text)
+        val chatRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
+        val updates = mapOf(
+            "lastMessage" to text,
+            "timestamp" to timestamp
+        )
+        chatRef.updateChildren(updates)
     }
+
 
     private fun pickImage() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
@@ -339,14 +361,65 @@ class chat_screen : BaseActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == IMAGE_PICK && resultCode == RESULT_OK && data != null) {
-            val imageUri = data.data
-            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
-            val base64Image = bitmapToBase64(bitmap)
-            sendImageMessage(base64Image)
+
+        if (resultCode != Activity.RESULT_OK || data == null) return
+
+        when (requestCode) {
+
+            // 📁 Gallery image selected
+            IMAGE_PICK -> {
+                val imageUri = data.data
+                if (imageUri != null) {
+                    val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+                    val base64Image = bitmapToBase64(bitmap)
+                    sendImageMessage(base64Image)
+                }
+            }
+
+            // 📸 Camera photo captured
+            CAMERA_REQUEST_CODE -> {
+                val imageBitmap = data.extras?.get("data") as? Bitmap
+                if (imageBitmap != null) {
+                    val base64Image = bitmapToBase64(imageBitmap)
+                    sendImageMessage(base64Image)
+                }
+            }
         }
     }
 
+    private fun updateLastMessageAfterChange(chatId: String) {
+        val chatRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId)
+        chatRef.child("messages")
+            .orderByChild("timestamp")
+            .limitToLast(1)
+            .get()
+            .addOnSuccessListener { snap ->
+                if (snap.exists()) {
+                    val msgSnap = snap.children.first()
+                    val lastText = msgSnap.child("text").getValue(String::class.java)
+                    val lastImg = msgSnap.child("imageUrl").getValue(String::class.java)
+                    val edited = msgSnap.child("edited").getValue(Boolean::class.java) ?: false
+                    val ts = msgSnap.child("timestamp").getValue(Long::class.java) ?: System.currentTimeMillis()
+
+                    val preview = when {
+                        !lastImg.isNullOrEmpty() -> "[Image]"
+                        lastText.isNullOrEmpty() -> ""
+                        edited -> "$lastText (edited)"
+                        else -> lastText
+                    }
+
+                    val updates = mapOf(
+                        "lastMessage" to preview,
+                        "timestamp" to ts
+                    )
+                    chatRef.updateChildren(updates)
+                } else {
+                    // No messages left — clear preview
+                    chatRef.child("lastMessage").setValue("")
+                    chatRef.child("timestamp").setValue(0)
+                }
+            }
+    }
     private fun sendImageMessage(base64Image: String) {
         if (!::messagesRef.isInitialized) return
 
@@ -355,9 +428,15 @@ class chat_screen : BaseActivity() {
 
         val message = ChatMessage(messageId, currentUserId, "", timestamp, base64Image, false)
         messagesRef.child(messageId).setValue(message)
-        FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
-            .child("lastMessage").setValue("[Image]")
+
+        val chatRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
+        val updates = mapOf(
+            "lastMessage" to "[Image]",
+            "timestamp" to timestamp
+        )
+        chatRef.updateChildren(updates)
     }
+
 
     private fun initiateCall(callType: String) {
         val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -429,7 +508,12 @@ class chat_screen : BaseActivity() {
             .setItems(options) { dialog, which ->
                 when (options[which]) {
                     "Edit" -> showEditDialog(message)
-                    "Delete" -> messagesRef.child(message.messageId!!).removeValue()
+                    "Delete" -> {
+                        messagesRef.child(message.messageId!!).removeValue()
+                            .addOnSuccessListener {
+                                updateLastMessageAfterChange(chatId!!)
+                            }
+                    }
                 }
                 dialog.dismiss()
             }.show()
@@ -445,12 +529,19 @@ class chat_screen : BaseActivity() {
             .setPositiveButton("Save") { _, _ ->
                 val newText = editText.text.toString().trim()
                 if (newText.isNotEmpty()) {
-                    val updates = mapOf("text" to newText, "edited" to true)
+                    val updates = mapOf(
+                        "text" to newText,
+                        "edited" to true
+                    )
                     messagesRef.child(message.messageId!!).updateChildren(updates)
+                        .addOnSuccessListener {
+                            updateLastMessageAfterChange(chatId!!)
+                        }
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
+
 
 }
