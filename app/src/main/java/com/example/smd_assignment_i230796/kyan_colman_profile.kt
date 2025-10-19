@@ -21,7 +21,6 @@ import java.util.TimeZone
 class kyan_colman_profile : AppCompatActivity() {
 
     private lateinit var tvUsername: TextView
-    private lateinit var tvFullName: TextView
     private lateinit var ivProfilePic: CircleImageView
     private lateinit var tvPostsCount: TextView
     private lateinit var tvFollowersCount: TextView
@@ -107,7 +106,6 @@ class kyan_colman_profile : AppCompatActivity() {
                 val user = snapshot.getValue(User::class.java)
                 if (user != null) {
                     tvUsername.text = "@${user.username ?: "username"}"
-                    tvFullName.text = "${user.firstName ?: ""} ${user.lastName ?: ""}"
                     tvFollowersCount.text = (user.followers?.size ?: 0).toString()
                     tvFollowingCount.text = (user.following?.size ?: 0).toString()
 
