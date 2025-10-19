@@ -5,6 +5,7 @@ import android.content.Intent
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -31,7 +32,7 @@ class chat_screen : BaseActivity() {
     private lateinit var btnCamera: ImageView
     private lateinit var imgProfile: ImageView
     private lateinit var tvChatName: TextView
-
+    private lateinit var btncall: ImageView
     private lateinit var messagesRef: DatabaseReference
     private lateinit var messageList: MutableList<ChatMessage>
     private lateinit var adapter: MessageAdapter
@@ -55,16 +56,12 @@ class chat_screen : BaseActivity() {
         btnCamera = findViewById(R.id.btnCamera)
         imgProfile = findViewById(R.id.imgProfile)
         tvChatName = findViewById(R.id.tvChatName)
+        btncall = findViewById(R.id.btnVideo)
 
         chatId = intent.getStringExtra("chatId")
         receiverId = intent.getStringExtra("receiverId")
         receiverName = intent.getStringExtra("receiverName")
         receiverProfileBase64 = intent.getStringExtra("receiverProfileBase64")
-
-        val chatId = intent.getStringExtra("chatId")
-        val receiverId = intent.getStringExtra("receiverId")
-        val receiverName = intent.getStringExtra("receiverName")
-        val receiverProfileBase64 = intent.getStringExtra("receiverProfileBase64")
 
         if (chatId.isNullOrEmpty() || receiverId.isNullOrEmpty()) {
             Toast.makeText(this, "Chat data missing", Toast.LENGTH_SHORT).show()
@@ -90,8 +87,17 @@ class chat_screen : BaseActivity() {
             initMessagesRef(chatId!!)
         } else if (!receiverId.isNullOrEmpty()) {
             fetchOrCreateChatForReceiver()
-        } else {
-            throw IllegalArgumentException("Chat cannot be opened without chatId or receiverId")
+        }
+
+        // 🔹 Call button logic
+        btncall.setOnClickListener {
+            val options = arrayOf("Audio Call", "Video Call")
+            AlertDialog.Builder(this)
+                .setTitle("Choose Call Type")
+                .setItems(options) { _, which ->
+                    val callType = if (which == 0) "audio" else "video"
+                    initiateCall(callType)
+                }.show()
         }
 
         startScreenshotDetection()
@@ -262,7 +268,8 @@ class chat_screen : BaseActivity() {
         val rect = android.graphics.Rect(0, 0, size, size)
         val rectF = android.graphics.RectF(rect)
         canvas.drawOval(rectF, paint)
-        paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+        paint.xfermode =
+            android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
         val left = (bitmap.width - size) / 2
         val top = (bitmap.height - size) / 2
         canvas.drawBitmap(bitmap, -left.toFloat(), -top.toFloat(), paint)
@@ -273,9 +280,9 @@ class chat_screen : BaseActivity() {
         if (receiverId.isNullOrEmpty()) return
 
         val chatsRef = FirebaseDatabase.getInstance().getReference("chats")
-        val canonicalId = if (currentUserId < receiverId!!) "${currentUserId}_${receiverId}" else "{$receiverId}_${currentUserId}"
+        val canonicalId =
+            if (currentUserId < receiverId!!) "${currentUserId}_${receiverId}" else "{$receiverId}_${currentUserId}"
 
-        // Check if a chat exists with this canonicalId
         chatsRef.orderByChild("chatId").equalTo(canonicalId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -283,7 +290,6 @@ class chat_screen : BaseActivity() {
                         chatId = snapshot.children.first().key
                         initMessagesRef(chatId!!)
                     } else {
-                        // If chat doesn't exist (receiver opens first time), create it
                         chatId = chatsRef.push().key
                         val chatData = mapOf(
                             "chatId" to canonicalId,
@@ -347,10 +353,45 @@ class chat_screen : BaseActivity() {
         val messageId = messagesRef.push().key ?: return
         val timestamp = System.currentTimeMillis()
 
-        val message = ChatMessage(messageId, currentUserId, "", timestamp,base64Image , false)
+        val message = ChatMessage(messageId, currentUserId, "", timestamp, base64Image, false)
         messagesRef.child(messageId).setValue(message)
         FirebaseDatabase.getInstance().getReference("chats").child(chatId!!)
             .child("lastMessage").setValue("[Image]")
+    }
+
+    private fun initiateCall(callType: String) {
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val selectedUid = receiverId ?: return
+
+        val callId =
+            if (currentUid < selectedUid) "${currentUid}_${selectedUid}" else "${selectedUid}_${currentUid}"
+
+        val callData = mapOf(
+            "callerId" to currentUid,
+            "receiverId" to selectedUid,
+            "type" to callType,
+            "status" to "ringing",
+            "channelName" to callId,
+            "timestamp" to ServerValue.TIMESTAMP
+        )
+
+        FirebaseDatabase.getInstance().getReference("calls")
+            .child(callId)
+            .setValue(callData)
+            .addOnSuccessListener {
+                val intent = Intent(this, outgoing_call::class.java)
+                intent.putExtra("callId", callId)
+                intent.putExtra("callType", callType)
+                intent.putExtra("receiverId", selectedUid)
+                intent.putExtra("receiverName", receiverName)
+                intent.putExtra("receiverProfileBase64", receiverProfileBase64)
+                Toast.makeText(this, "Call intiated from chat_screen ", Toast.LENGTH_SHORT).show()
+                startActivity(intent)
+
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to initiate call.", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
@@ -381,7 +422,8 @@ class chat_screen : BaseActivity() {
         val timeLimit = 5 * 60 * 1000
         val canEdit = System.currentTimeMillis() - message.timestamp < timeLimit
 
-        val options = if (canEdit) arrayOf("Edit", "Delete", "Cancel") else arrayOf("Delete", "Cancel")
+        val options =
+            if (canEdit) arrayOf("Edit", "Delete", "Cancel") else arrayOf("Delete", "Cancel")
 
         AlertDialog.Builder(this)
             .setItems(options) { dialog, which ->
@@ -410,4 +452,5 @@ class chat_screen : BaseActivity() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
 }

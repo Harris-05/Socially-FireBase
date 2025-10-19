@@ -28,6 +28,7 @@ class kyan_colman_profile : BaseActivity() {
     private lateinit var tvFollowingCount: TextView
     private lateinit var recyclerProfilePosts: RecyclerView
     private lateinit var btnFollow: androidx.appcompat.widget.AppCompatButton
+    private lateinit var tvBio: TextView   // ✅ added for displaying bio
 
     private lateinit var auth: FirebaseAuth
     private lateinit var usersRef: DatabaseReference
@@ -49,7 +50,8 @@ class kyan_colman_profile : BaseActivity() {
             finish()
             return
         }
-        val visuId=intent.getStringExtra("visitedUserId")
+
+        val visuId = intent.getStringExtra("visitedUserId")
         if (visuId == null) {
             Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
             finish()
@@ -62,6 +64,7 @@ class kyan_colman_profile : BaseActivity() {
         usersRef = FirebaseDatabase.getInstance().getReference("Users")
         postsRef = FirebaseDatabase.getInstance().getReference("Posts")
 
+        // Initialize Views
         ivProfilePic = findViewById(R.id.ivProfilePic)
         tvUsername = findViewById(R.id.tvUsername)
         tvFullName = findViewById(R.id.tvFullName)
@@ -70,6 +73,7 @@ class kyan_colman_profile : BaseActivity() {
         tvFollowingCount = findViewById(R.id.tvFollowingCount)
         btnFollow = findViewById(R.id.stateButton)
         recyclerProfilePosts = findViewById(R.id.recyclerProfilePosts)
+        tvBio = findViewById(R.id.tvBio)  // ✅ new TextView for bio (make sure you add it in XML)
 
 
         tvFollowersCount.setOnClickListener {
@@ -91,12 +95,14 @@ class kyan_colman_profile : BaseActivity() {
         postAdapter = ProfilePostAdapter(postImages)
         recyclerProfilePosts.adapter = postAdapter
 
+        // Load user info and posts
         loadVisitedUserInfo()
         loadVisitedUserPosts()
         setupFollowButton()
         setupBottomNav()
     }
 
+    // ✅ Now includes bio
     private fun loadVisitedUserInfo() {
         usersRef.child(visitedUserId!!).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -108,6 +114,10 @@ class kyan_colman_profile : BaseActivity() {
                     tvFollowersCount.text = (user.followers?.size ?: 0).toString()
                     tvFollowingCount.text = (user.following?.size ?: 0).toString()
 
+                    // ✅ Display bio (default if empty)
+                    tvBio.text = if (!user.bio.isNullOrEmpty()) user.bio else "No bio yet"
+
+                    // ✅ Decode profile image
                     if (!user.profileImage.isNullOrEmpty()) {
                         try {
                             val bytes = Base64.decode(user.profileImage, Base64.DEFAULT)
@@ -274,7 +284,7 @@ class kyan_colman_profile : BaseActivity() {
         }
     }
 
-
+    // --- STORY BORDER ---
     private fun updateStoryBorder(profileOwnerId: String) {
         val viewerId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
@@ -286,6 +296,7 @@ class kyan_colman_profile : BaseActivity() {
         val borderGreen = ContextCompat.getColor(this, R.color.greenn)
         val borderRed = ContextCompat.getColor(this, R.color.redd)
 
+        // --- Helper function to evaluate and set color ---
         fun applyBorderColor(isFollowing: Boolean, isCloseFriend: Boolean) {
             if (!isFollowing && !isCloseFriend) {
                 profileImageView.borderColor = borderGray
@@ -293,6 +304,7 @@ class kyan_colman_profile : BaseActivity() {
                 return
             }
 
+            // Listen for story updates in real-time
             storiesRef.child(profileOwnerId)
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
@@ -306,7 +318,7 @@ class kyan_colman_profile : BaseActivity() {
                         sdf.timeZone = TimeZone.getTimeZone("UTC")
 
                         var latestStoryTime = 0L
-                        var currentUserViewed = false
+                        var latestStoryViewed = true
                         var latestStoryCloseFriends = false
 
                         for (storySnap in snapshot.children) {
@@ -315,6 +327,8 @@ class kyan_colman_profile : BaseActivity() {
 
                             if (parsedTime > latestStoryTime) {
                                 latestStoryTime = parsedTime
+                                latestStoryViewed = storySnap.child("isViewed")
+                                    .child(viewerId).getValue(Boolean::class.java) ?: true
                                 latestStoryCloseFriends = storySnap.child("isCloseFriends")
                                     .getValue(Boolean::class.java) ?: false
 
@@ -330,12 +344,13 @@ class kyan_colman_profile : BaseActivity() {
                         if (!storyActive) {
                             profileImageView.borderColor = borderGray
                         } else {
+                            // Access rules (Instagram-style)
                             if (latestStoryCloseFriends && !isCloseFriend) {
-                                // viewer not allowed to see close-friends story
+                                // not allowed to see close-friends story
                                 profileImageView.borderColor = borderGray
                             } else {
                                 profileImageView.borderColor = when {
-                                    currentUserViewed -> borderGray
+                                    latestStoryViewed -> borderGray
                                     latestStoryCloseFriends -> borderGreen
                                     else -> borderRed
                                 }
@@ -349,7 +364,7 @@ class kyan_colman_profile : BaseActivity() {
                 })
         }
 
-        // --- Real-time relationship check ---
+        // --- Real-time listener for relationship changes ---
         val followingRef = usersRef.child(viewerId).child("following").child(profileOwnerId)
         val closeFriendsRef = usersRef.child(profileOwnerId).child("closeFriends").child(viewerId)
 
@@ -368,6 +383,7 @@ class kyan_colman_profile : BaseActivity() {
             override fun onCancelled(error: DatabaseError) {}
         }
 
+        // Keep listening for changes in relationship and stories
         followingRef.addValueEventListener(relationshipListener)
         closeFriendsRef.addValueEventListener(relationshipListener)
     }

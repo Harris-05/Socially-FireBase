@@ -174,56 +174,10 @@
                 </LinearLayout>
 
 
-
-                <!-- Name -->
-                <TextView
-                    android:id="@+id/tvFullName"
-                    android:textColor="@color/black"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Kyan Coleman"
-                    android:textStyle="bold"
-                    android:layout_marginTop="8dp"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:background="@drawable/threads_grey">
-                    <ImageView
-                        android:layout_width="wrap_content"
-                        android:layout_height="20dp"
-                        android:tint="@color/black"
-                        android:src="@drawable/kyancoleman_threads"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:textColor="@color/black"
-                        android:text="kyan.coleman"
-                        android:layout_marginTop="2dp"
-                        android:textSize="12sp"/>
-
-
-
-                </LinearLayout>
-
-
-                <!-- Bio -->
-
-                <TextView
-                    android:id="@+id/tvBlogger"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Blogger"
-
-                    android:textColor="#73777A"
-                    android:layout_marginTop="8dp"
-                    />
                 <TextView
                     android:id="@+id/tvBio"
                     android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
                     android:layout_height="wrap_content"
                     android:text="@string/kyancoleman_bio"
                     android:textColor="@color/black"
@@ -233,20 +187,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
-                    <ImageView
-                        android:layout_width="wrap_content"
-                        android:layout_height="20dp"
-                        android:id="@+id/linkic"
-                        android:src="@drawable/kyancoleman_link"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="20dp"
-                        android:text="kyan.co"
-                        android:layout_marginLeft="20dp"
-                        android:textStyle="bold"
-                        android:textSize="15sp"
-                        android:layout_alignLeft="@+id/linkic"
-                        />
                 </RelativeLayout>
 
                 <RelativeLayout

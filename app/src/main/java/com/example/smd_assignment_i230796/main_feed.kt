@@ -95,6 +95,7 @@ class main_feed : BaseActivity() {
         bottomNav()
         TopBar()
         requestNotificationPermission()
+        startIncomingCallService()
 
         //Register STORY_UPDATED receiver
         val updateFilter = IntentFilter("com.example.smd_assignment_i230796.STORY_UPDATED")
@@ -396,5 +397,29 @@ class main_feed : BaseActivity() {
             }
         })
     }
+    private fun startIncomingCallService() {
+        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(currentUserId)
+        userRef.get()
+            .addOnSuccessListener { snapshot ->
+                val userName = snapshot.child("username").getValue(String::class.java) ?: "Unknown"
+                val profileBase64 = snapshot.child("profileImage").getValue(String::class.java) ?: ""
+
+                val serviceIntent = Intent(this, IncomingCallService::class.java)
+                serviceIntent.putExtra("userId", currentUserId)
+                serviceIntent.putExtra("userName", userName)
+                serviceIntent.putExtra("userProfilePic", profileBase64)
+
+                startService(serviceIntent)
+            }
+            .addOnFailureListener {
+                // Fallback if fetching user data fails
+                val serviceIntent = Intent(this, IncomingCallService::class.java)
+                serviceIntent.putExtra("userId", currentUserId)
+                serviceIntent.putExtra("userName", "Unknown")
+                serviceIntent.putExtra("userProfilePic", "")
+                startService(serviceIntent)
+            }
+    }
+
 
 }

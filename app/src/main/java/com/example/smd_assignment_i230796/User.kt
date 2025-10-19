@@ -9,6 +9,10 @@ data class User(
     var email: String? = null,
     var dob: String? = null,
     var profileImage: String? = null,
+    var phoneNumber: String? = null,
+    var gender: String? = null,
+    var bio: String? = null,
+
 
 
     // 🔹 Relationship fields

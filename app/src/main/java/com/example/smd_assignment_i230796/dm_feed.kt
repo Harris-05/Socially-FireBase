@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -22,7 +24,6 @@ class dm_feed : BaseActivity() {
     private lateinit var etSearch: EditText
     private lateinit var btnBack: ImageView
     private lateinit var btnAdd: ImageView
-
     private lateinit var dbRef: DatabaseReference
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
@@ -34,6 +35,21 @@ class dm_feed : BaseActivity() {
         etSearch = findViewById(R.id.etSearch)
         btnBack = findViewById(R.id.btnBack)
         btnAdd = findViewById(R.id.btnAdd)
+        val username = findViewById<TextView>(R.id.tvUsername)
+
+        val db = FirebaseDatabase.getInstance().getReference("Users").child(currentUserId)
+
+        db.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val un = snapshot.child("username").getValue(String::class.java)
+                username.text=un
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+            }
+        })
+
+
 
         btnBack.setOnClickListener { finish() }
         btnAdd.setOnClickListener { startActivity(Intent(this, AddChatActivity::class.java)) }

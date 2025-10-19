@@ -1,4 +1,4 @@
-package com.example.smd_assignment_i230796.adapters
+package com.example.smd_assignment_i230796
 
 import android.view.LayoutInflater
 import android.view.View
