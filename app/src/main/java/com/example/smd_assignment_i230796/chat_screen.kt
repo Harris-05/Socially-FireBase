@@ -2,9 +2,13 @@ package com.example.smd_assignment_i230796
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
 import android.widget.EditText
@@ -116,7 +120,8 @@ class chat_screen : AppCompatActivity() {
         val rect = android.graphics.Rect(0, 0, size, size)
         val rectF = android.graphics.RectF(rect)
         canvas.drawOval(rectF, paint)
-        paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+        paint.xfermode =
+            android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
         val left = (bitmap.width - size) / 2
         val top = (bitmap.height - size) / 2
         canvas.drawBitmap(bitmap, -left.toFloat(), -top.toFloat(), paint)
@@ -127,7 +132,8 @@ class chat_screen : AppCompatActivity() {
         if (receiverId.isNullOrEmpty()) return
 
         val chatsRef = FirebaseDatabase.getInstance().getReference("chats")
-        val canonicalId = if (currentUserId < receiverId!!) "${currentUserId}_${receiverId}" else "{$receiverId}_${currentUserId}"
+        val canonicalId =
+            if (currentUserId < receiverId!!) "${currentUserId}_${receiverId}" else "{$receiverId}_${currentUserId}"
 
         chatsRef.orderByChild("chatId").equalTo(canonicalId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -205,12 +211,12 @@ class chat_screen : AppCompatActivity() {
             .child("lastMessage").setValue("[Image]")
     }
 
-    // ✅ FIXED initiateCall()
     private fun initiateCall(callType: String) {
         val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val selectedUid = receiverId ?: return
 
-        val callId = if (currentUid < selectedUid) "${currentUid}_${selectedUid}" else "${selectedUid}_${currentUid}"
+        val callId =
+            if (currentUid < selectedUid) "${currentUid}_${selectedUid}" else "${selectedUid}_${currentUid}"
 
         val callData = mapOf(
             "callerId" to currentUid,
@@ -225,14 +231,15 @@ class chat_screen : AppCompatActivity() {
             .child(callId)
             .setValue(callData)
             .addOnSuccessListener {
-                // 🔹 Go to outgoing_call screen
                 val intent = Intent(this, outgoing_call::class.java)
                 intent.putExtra("callId", callId)
                 intent.putExtra("callType", callType)
                 intent.putExtra("receiverId", selectedUid)
                 intent.putExtra("receiverName", receiverName)
                 intent.putExtra("receiverProfileBase64", receiverProfileBase64)
+                Toast.makeText(this, "Call intiated from chat_screen ", Toast.LENGTH_SHORT).show()
                 startActivity(intent)
+
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to initiate call.", Toast.LENGTH_SHORT).show()
@@ -267,7 +274,8 @@ class chat_screen : AppCompatActivity() {
         val timeLimit = 5 * 60 * 1000
         val canEdit = System.currentTimeMillis() - message.timestamp < timeLimit
 
-        val options = if (canEdit) arrayOf("Edit", "Delete", "Cancel") else arrayOf("Delete", "Cancel")
+        val options =
+            if (canEdit) arrayOf("Edit", "Delete", "Cancel") else arrayOf("Delete", "Cancel")
 
         AlertDialog.Builder(this)
             .setItems(options) { dialog, which ->
@@ -296,4 +304,5 @@ class chat_screen : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
 }

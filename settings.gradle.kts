@@ -9,10 +9,12 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven("https://artifact.agora.io/repository/maven") // <-- Add Agora here
     }
 }
+
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS) // <-- change from FAIL_ON_PROJECT_REPOS
     repositories {
         google()
         mavenCentral()
@@ -21,4 +23,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "SMD_Assignment_i230796"
 include(":app")
- 
