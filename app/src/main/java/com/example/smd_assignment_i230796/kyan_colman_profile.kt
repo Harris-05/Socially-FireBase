@@ -28,6 +28,7 @@ class kyan_colman_profile : AppCompatActivity() {
     private lateinit var tvFollowingCount: TextView
     private lateinit var recyclerProfilePosts: RecyclerView
     private lateinit var btnFollow: androidx.appcompat.widget.AppCompatButton
+    private lateinit var tvBio: TextView   // ✅ added for displaying bio
 
     private lateinit var auth: FirebaseAuth
     private lateinit var usersRef: DatabaseReference
@@ -49,7 +50,8 @@ class kyan_colman_profile : AppCompatActivity() {
             finish()
             return
         }
-        val visuId=intent.getStringExtra("visitedUserId")
+
+        val visuId = intent.getStringExtra("visitedUserId")
         if (visuId == null) {
             Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
             finish()
@@ -62,16 +64,17 @@ class kyan_colman_profile : AppCompatActivity() {
         usersRef = FirebaseDatabase.getInstance().getReference("Users")
         postsRef = FirebaseDatabase.getInstance().getReference("Posts")
 
+        // Initialize Views
         ivProfilePic = findViewById(R.id.ivProfilePic)
         tvUsername = findViewById(R.id.tvUsername)
-        tvFullName = findViewById(R.id.tvFullName)
         tvPostsCount = findViewById(R.id.tvPostsCount)
         tvFollowersCount = findViewById(R.id.tvFollowersCount)
         tvFollowingCount = findViewById(R.id.tvFollowingCount)
         btnFollow = findViewById(R.id.stateButton)
         recyclerProfilePosts = findViewById(R.id.recyclerProfilePosts)
+        tvBio = findViewById(R.id.tvBio)  // ✅ new TextView for bio (make sure you add it in XML)
 
-
+        // Click listeners for followers/following
         tvFollowersCount.setOnClickListener {
             val intent = Intent(this, UserListActivity::class.java)
             intent.putExtra("userId", visitedUserId)
@@ -86,17 +89,18 @@ class kyan_colman_profile : AppCompatActivity() {
             startActivity(intent)
         }
 
-
         recyclerProfilePosts.layoutManager = GridLayoutManager(this, 3)
         postAdapter = ProfilePostAdapter(postImages)
         recyclerProfilePosts.adapter = postAdapter
 
+        // Load user info and posts
         loadVisitedUserInfo()
         loadVisitedUserPosts()
         setupFollowButton()
         setupBottomNav()
     }
 
+    // ✅ Now includes bio
     private fun loadVisitedUserInfo() {
         usersRef.child(visitedUserId!!).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -104,10 +108,13 @@ class kyan_colman_profile : AppCompatActivity() {
                 if (user != null) {
                     tvUsername.text = "@${user.username ?: "username"}"
                     tvFullName.text = "${user.firstName ?: ""} ${user.lastName ?: ""}"
-
                     tvFollowersCount.text = (user.followers?.size ?: 0).toString()
                     tvFollowingCount.text = (user.following?.size ?: 0).toString()
 
+                    // ✅ Display bio (default if empty)
+                    tvBio.text = if (!user.bio.isNullOrEmpty()) user.bio else "No bio yet"
+
+                    // ✅ Decode profile image
                     if (!user.profileImage.isNullOrEmpty()) {
                         try {
                             val bytes = Base64.decode(user.profileImage, Base64.DEFAULT)
@@ -274,10 +281,9 @@ class kyan_colman_profile : AppCompatActivity() {
         }
     }
 
-
+    // --- STORY BORDER ---
     private fun updateStoryBorder(profileOwnerId: String) {
         val viewerId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
         val usersRef = FirebaseDatabase.getInstance().getReference("Users")
         val storiesRef = FirebaseDatabase.getInstance().getReference("Stories")
         val profileImageView = findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.ivProfilePic)
@@ -286,7 +292,6 @@ class kyan_colman_profile : AppCompatActivity() {
         val borderGreen = ContextCompat.getColor(this, R.color.greenn)
         val borderRed = ContextCompat.getColor(this, R.color.redd)
 
-        // --- Helper function to evaluate and set color ---
         fun applyBorderColor(isFollowing: Boolean, isCloseFriend: Boolean) {
             if (!isFollowing && !isCloseFriend) {
                 profileImageView.borderColor = borderGray
@@ -294,7 +299,6 @@ class kyan_colman_profile : AppCompatActivity() {
                 return
             }
 
-            // Listen for story updates in real-time
             storiesRef.child(profileOwnerId)
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
@@ -330,9 +334,7 @@ class kyan_colman_profile : AppCompatActivity() {
                         if (!storyActive) {
                             profileImageView.borderColor = borderGray
                         } else {
-                            // Access rules (Instagram-style)
                             if (latestStoryCloseFriends && !isCloseFriend) {
-                                // not allowed to see close-friends story
                                 profileImageView.borderColor = borderGray
                             } else {
                                 profileImageView.borderColor = when {
@@ -350,7 +352,6 @@ class kyan_colman_profile : AppCompatActivity() {
                 })
         }
 
-        // --- Real-time listener for relationship changes ---
         val followingRef = usersRef.child(viewerId).child("following").child(profileOwnerId)
         val closeFriendsRef = usersRef.child(profileOwnerId).child("closeFriends").child(viewerId)
 
@@ -369,9 +370,7 @@ class kyan_colman_profile : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {}
         }
 
-        // Keep listening for changes in relationship and stories
         followingRef.addValueEventListener(relationshipListener)
         closeFriendsRef.addValueEventListener(relationshipListener)
     }
-
 }

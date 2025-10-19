@@ -53,7 +53,7 @@
         android:gravity="center"
         android:paddingVertical="12dp">
 
-        <ImageView
+        <de.hdodenhof.circleimageview.CircleImageView
             android:id="@+id/iv_profile_pic"
             android:layout_width="100dp"
             android:layout_height="100dp"
@@ -66,6 +66,7 @@
             android:layout_height="wrap_content"
             android:text="Change Profile Photo"
             android:textColor="#8E5E60"
+            android:id="@+id/changephoto"
             android:textSize="14sp"
             android:layout_marginTop="8dp"/>
     </LinearLayout>
@@ -105,10 +106,10 @@
                     android:layout_weight="1"
                     android:id="@+id/name_edittext"
                     android:layout_marginStart="16dp"
-                    android:hint="Jacob West"
+                    android:hint="Name"
                     android:textColorHint="@color/black"
                     android:background="@null"
-                    android:textColor="@android:color/black" />
+                    android:textColor="#A0A0A0" />
             </LinearLayout>
 
             <View
@@ -136,6 +137,7 @@
                     android:layout_width="90dp"
                     android:layout_height="wrap_content"
                     android:text="Username"
+
                     android:textColor="@android:color/black" />
 
                 <EditText
@@ -144,10 +146,10 @@
                     android:layout_weight="1"
                     android:layout_marginStart="16dp"
                     android:id="@+id/username_edittext"
-                    android:hint="jacob_w"
+                    android:hint="Username"
                     android:textColorHint="@color/black"
                     android:background="@null"
-                    android:textColor="@android:color/black" />
+                    android:textColor="#A0A0A0" />
             </LinearLayout>
 
 
@@ -225,7 +227,7 @@
                     android:textColorHint="@color/black"
                     android:layout_weight="1"
                     android:layout_marginStart="16dp"
-                    android:hint="@string/edit_profile_bio"
+                    android:hint="bio"
                     android:background="@null"
                     android:inputType="textMultiLine"
                     android:textColor="@android:color/black" />

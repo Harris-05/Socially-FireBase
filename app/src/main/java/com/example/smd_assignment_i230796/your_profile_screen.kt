@@ -22,6 +22,8 @@ class your_profile_screen : AppCompatActivity() {
     private lateinit var tvUsername: TextView
     private lateinit var tvFullName: TextView
     private lateinit var ivProfilePic: CircleImageView
+    private lateinit var tvBio: TextView
+
     private lateinit var tvPostsCount: TextView
     private lateinit var tvFollowersCount: TextView
     private lateinit var tvFollowingCount: TextView
@@ -51,6 +53,8 @@ class your_profile_screen : AppCompatActivity() {
         tvPostsCount = findViewById(R.id.tvPostsCount)
         tvFollowersCount = findViewById(R.id.tvFollowersCount)
         tvFollowingCount = findViewById(R.id.tvFollowingCount)
+        tvBio = findViewById(R.id.tvBio)
+
 
         tvFollowersCount.setOnClickListener {
             val intent = Intent(this, UserListActivity::class.java)
@@ -194,6 +198,13 @@ class your_profile_screen : AppCompatActivity() {
                     tvUsername.text = "@${user.username ?: "username"}"
                     tvFullName.text = "${user.firstName ?: ""} ${user.lastName ?: ""}"
 
+                    // ✅ Show Bio if available
+                    if (!user.bio.isNullOrEmpty()) {
+                        tvBio.text = user.bio
+                    } else {
+                        tvBio.text = "No bio added yet"
+                    }
+
                     tvFollowersCount.text = (user.followers?.size ?: 0).toString()
                     tvFollowingCount.text = (user.following?.size ?: 0).toString()
 
@@ -201,10 +212,8 @@ class your_profile_screen : AppCompatActivity() {
                     if (!user.profileImage.isNullOrEmpty()) {
                         try {
                             val imageBytes = Base64.decode(user.profileImage, Base64.DEFAULT)
-                            val decodedImage =
-                                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                            val decodedImage = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                             ivProfilePic.setImageBitmap(decodedImage)
-
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -215,6 +224,7 @@ class your_profile_screen : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {}
         })
     }
+
 
     // --- Load user posts dynamically into RecyclerView ---
     private fun loadUserPosts(userId: String) {
