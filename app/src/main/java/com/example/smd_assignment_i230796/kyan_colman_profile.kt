@@ -18,10 +18,9 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
-class kyan_colman_profile : BaseActivity() {
+class kyan_colman_profile : AppCompatActivity() {
 
     private lateinit var tvUsername: TextView
-    private lateinit var tvFullName: TextView
     private lateinit var ivProfilePic: CircleImageView
     private lateinit var tvPostsCount: TextView
     private lateinit var tvFollowersCount: TextView
@@ -67,7 +66,6 @@ class kyan_colman_profile : BaseActivity() {
         // Initialize Views
         ivProfilePic = findViewById(R.id.ivProfilePic)
         tvUsername = findViewById(R.id.tvUsername)
-        tvFullName = findViewById(R.id.tvFullName)
         tvPostsCount = findViewById(R.id.tvPostsCount)
         tvFollowersCount = findViewById(R.id.tvFollowersCount)
         tvFollowingCount = findViewById(R.id.tvFollowingCount)
@@ -75,7 +73,7 @@ class kyan_colman_profile : BaseActivity() {
         recyclerProfilePosts = findViewById(R.id.recyclerProfilePosts)
         tvBio = findViewById(R.id.tvBio)  // ✅ new TextView for bio (make sure you add it in XML)
 
-
+        // Click listeners for followers/following
         tvFollowersCount.setOnClickListener {
             val intent = Intent(this, UserListActivity::class.java)
             intent.putExtra("userId", visitedUserId)
@@ -89,7 +87,6 @@ class kyan_colman_profile : BaseActivity() {
             intent.putExtra("type", "following")
             startActivity(intent)
         }
-
 
         recyclerProfilePosts.layoutManager = GridLayoutManager(this, 3)
         postAdapter = ProfilePostAdapter(postImages)
@@ -109,8 +106,6 @@ class kyan_colman_profile : BaseActivity() {
                 val user = snapshot.getValue(User::class.java)
                 if (user != null) {
                     tvUsername.text = "@${user.username ?: "username"}"
-                    tvFullName.text = "${user.firstName ?: ""} ${user.lastName ?: ""}"
-
                     tvFollowersCount.text = (user.followers?.size ?: 0).toString()
                     tvFollowingCount.text = (user.following?.size ?: 0).toString()
 
@@ -287,7 +282,6 @@ class kyan_colman_profile : BaseActivity() {
     // --- STORY BORDER ---
     private fun updateStoryBorder(profileOwnerId: String) {
         val viewerId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
         val usersRef = FirebaseDatabase.getInstance().getReference("Users")
         val storiesRef = FirebaseDatabase.getInstance().getReference("Stories")
         val profileImageView = findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.ivProfilePic)
@@ -296,7 +290,6 @@ class kyan_colman_profile : BaseActivity() {
         val borderGreen = ContextCompat.getColor(this, R.color.greenn)
         val borderRed = ContextCompat.getColor(this, R.color.redd)
 
-        // --- Helper function to evaluate and set color ---
         fun applyBorderColor(isFollowing: Boolean, isCloseFriend: Boolean) {
             if (!isFollowing && !isCloseFriend) {
                 profileImageView.borderColor = borderGray
@@ -304,7 +297,6 @@ class kyan_colman_profile : BaseActivity() {
                 return
             }
 
-            // Listen for story updates in real-time
             storiesRef.child(profileOwnerId)
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
@@ -331,10 +323,6 @@ class kyan_colman_profile : BaseActivity() {
                                     .child(viewerId).getValue(Boolean::class.java) ?: true
                                 latestStoryCloseFriends = storySnap.child("isCloseFriends")
                                     .getValue(Boolean::class.java) ?: false
-
-                                // ✅ Properly handle viewedBy as Map<String, Boolean>
-                                val viewedByMap = storySnap.child("viewedBy").value as? Map<String, Boolean>
-                                currentUserViewed = viewedByMap?.get(viewerId) == true
                             }
                         }
 
@@ -344,9 +332,7 @@ class kyan_colman_profile : BaseActivity() {
                         if (!storyActive) {
                             profileImageView.borderColor = borderGray
                         } else {
-                            // Access rules (Instagram-style)
                             if (latestStoryCloseFriends && !isCloseFriend) {
-                                // not allowed to see close-friends story
                                 profileImageView.borderColor = borderGray
                             } else {
                                 profileImageView.borderColor = when {
@@ -364,7 +350,6 @@ class kyan_colman_profile : BaseActivity() {
                 })
         }
 
-        // --- Real-time listener for relationship changes ---
         val followingRef = usersRef.child(viewerId).child("following").child(profileOwnerId)
         val closeFriendsRef = usersRef.child(profileOwnerId).child("closeFriends").child(viewerId)
 
@@ -383,9 +368,7 @@ class kyan_colman_profile : BaseActivity() {
             override fun onCancelled(error: DatabaseError) {}
         }
 
-        // Keep listening for changes in relationship and stories
         followingRef.addValueEventListener(relationshipListener)
         closeFriendsRef.addValueEventListener(relationshipListener)
     }
-
 }

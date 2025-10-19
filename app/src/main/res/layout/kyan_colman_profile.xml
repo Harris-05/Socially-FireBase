@@ -252,9 +252,9 @@
                         android:textColor="@android:color/black"
                         android:textSize="14sp"
                         android:background="@drawable/kyan_gray_box"
-                    android:stateListAnimator="@null"
-                    android:elevation="0dp"
-                    android:layout_marginStart="6dp" />
+                        android:stateListAnimator="@null"
+                        android:elevation="0dp"
+                        android:layout_marginStart="6dp" />
 
 
                     <androidx.appcompat.widget.AppCompatButton
