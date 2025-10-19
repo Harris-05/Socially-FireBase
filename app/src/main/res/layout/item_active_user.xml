@@ -1,0 +1,32 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="70dp"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="8dp"
+    android:layout_gravity="center">
+
+    <!-- Profile Image -->
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/imgProfile"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="center"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:src="@drawable/main_post_img"
+        android:scaleType="centerCrop"
+        android:contentDescription="Profile image"
+        android:importantForAccessibility="no"
+        android:layout_marginStart="3dp"
+        android:layout_marginEnd="3dp" />
+
+    <!-- Green dot (overlapping at bottom-right) -->
+    <View
+        android:id="@+id/onlineIndicator"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="4dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/green_circle_border"
+        android:elevation="4dp" />
+</FrameLayout>

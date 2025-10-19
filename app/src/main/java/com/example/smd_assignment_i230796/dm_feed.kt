@@ -2,6 +2,7 @@ package com.example.smd_assignment_i230796
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -26,6 +27,11 @@ class dm_feed : BaseActivity() {
     private lateinit var btnAdd: ImageView
     private lateinit var dbRef: DatabaseReference
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+    private lateinit var recyclerActiveFollowing: RecyclerView
+    private lateinit var activeAdapter: ActiveUserAdapter
+    private val activeFollowingList = mutableListOf<ActiveUser>()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +77,16 @@ class dm_feed : BaseActivity() {
 
         dbRef = FirebaseDatabase.getInstance().getReference("chats")
         loadChats()
+
+
+        recyclerActiveFollowing = findViewById(R.id.recyclerActiveFollowing)
+        recyclerActiveFollowing.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        activeAdapter = ActiveUserAdapter(activeFollowingList, null)
+        recyclerActiveFollowing.adapter = activeAdapter
+
+        loadActiveFollowing()
+
+
     }
 
     private fun loadChats() {
@@ -104,6 +120,54 @@ class dm_feed : BaseActivity() {
             override fun onCancelled(error: DatabaseError) {}
         })
     }
+
+
+    private fun loadActiveFollowing() {
+        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(currentUserId)
+
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val followingList = snapshot.child("following").children.mapNotNull { it.key }
+
+                for (followId in followingList) {
+                    FirebaseDatabase.getInstance().getReference("Users").child(followId)
+                        .addValueEventListener(object : ValueEventListener {
+                            override fun onDataChange(fSnap: DataSnapshot) {
+                                val onlineStatus = fSnap.child("onlineStatus").getValue(String::class.java) ?: "offline"
+
+                                if (onlineStatus.lowercase() == "online") {
+                                    val username = fSnap.child("username").getValue(String::class.java) ?: ""
+                                    val profileImg = fSnap.child("profileImage").getValue(String::class.java) ?: ""
+                                    val userId = fSnap.key ?: ""
+
+                                    // Add if not already in list
+                                    if (activeFollowingList.none { it.userId == userId }) {
+                                        activeFollowingList.add(ActiveUser(userId, profileImg, username))
+                                    }
+                                } else {
+                                    // Remove if user went offline
+                                    activeFollowingList.removeAll { it.userId == fSnap.key }
+                                }
+
+                                // 🔹 Update visibility based on list size
+                                if (activeFollowingList.isEmpty()) {
+                                    recyclerActiveFollowing.visibility = View.GONE
+                                } else {
+                                    recyclerActiveFollowing.visibility = View.VISIBLE
+                                }
+
+                                activeAdapter.notifyDataSetChanged()
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {}
+                        })
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
 
     private fun fetchUserInfo(
         userId: String,

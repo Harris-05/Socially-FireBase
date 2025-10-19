@@ -5,6 +5,7 @@
     android:background="@color/white"
     android:padding="10dp">
 
+    <!-- 🔹 Top bar -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -51,6 +52,7 @@
             android:src="@drawable/dm_add_shape" />
     </LinearLayout>
 
+    <!-- 🔹 Search bar -->
     <EditText
         android:id="@+id/etSearch"
         android:layout_width="match_parent"
@@ -64,15 +66,29 @@
         android:drawableStart="@drawable/search_search_icon"
         android:background="@color/searchbox_gray" />
 
+    <!-- 🔹 Active following (horizontal list) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerActiveFollowing"
+        android:layout_width="match_parent"
+        android:layout_height="90dp"
+        android:layout_below="@id/etSearch"
+        android:layout_marginTop="4dp"
+        android:paddingHorizontal="8dp"
+        android:scrollbars="horizontal"
+        android:orientation="horizontal"
+        android:overScrollMode="never" />
+
+    <!-- 🔹 Chats list (placed BELOW active following) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerChats"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/etSearch"
+        android:layout_below="@id/recyclerActiveFollowing"
         android:layout_above="@id/bottom_nav_container"
         android:paddingVertical="8dp"
         android:scrollbars="vertical" />
 
+    <!-- 🔹 Bottom navigation -->
     <LinearLayout
         android:id="@+id/bottom_nav_container"
         android:layout_width="match_parent"
