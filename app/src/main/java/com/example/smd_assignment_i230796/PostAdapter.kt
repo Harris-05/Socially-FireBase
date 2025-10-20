@@ -17,7 +17,9 @@ class PostAdapter(
     private val context: android.content.Context,
     private val posts: MutableList<Post>,
     private val currentUsername: String,
-    private val currentUserProfileBase64: String?
+    private val currentUserProfileBase64: String?,
+    private val userProfiles: MutableMap<String, String> = mutableMapOf()
+
 ) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
     inner class PostViewHolder(val binding: ItemPostBinding) :
@@ -93,10 +95,12 @@ class PostAdapter(
 
 
 
-        // ---------- PROFILE IMAGE ----------
-        if (!post.profileImageUrl.isNullOrEmpty()) {
+        // ---------- PROFILE IMAGE (auto-updating) ----------
+        val userProfileBase64 = userProfiles[post.userId] ?: post.profileImageUrl
+
+        if (!userProfileBase64.isNullOrEmpty()) {
             try {
-                val bytes = Base64.decode(post.profileImageUrl, Base64.DEFAULT)
+                val bytes = Base64.decode(userProfileBase64, Base64.DEFAULT)
                 val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 holder.binding.ivPostProfile.setImageBitmap(bitmap)
             } catch (e: Exception) {
@@ -105,6 +109,7 @@ class PostAdapter(
         } else {
             holder.binding.ivPostProfile.setImageResource(R.drawable.profile)
         }
+
 
         // ---------- POST IMAGES ----------
         when {
@@ -254,8 +259,10 @@ class PostAdapter(
 
         val inflater = LayoutInflater.from(context)
 
-        // Inflate existing comments
+        // ---------- Inflate existing comments (auto-updating with latest profile images) ----------
         if (comments.isNotEmpty()) {
+            commentsSection.removeAllViews()
+
             for (c in comments) {
                 val commentView = inflater.inflate(R.layout.item_comment, commentsSection, false)
                 val ivProfile = commentView.findViewById<ImageView>(R.id.ivCommentProfile)
@@ -265,12 +272,13 @@ class PostAdapter(
                 tvUsername.text = c.username ?: ""
                 tvText.text = c.text ?: ""
 
-                if (!c.profileImageBase64.isNullOrEmpty()) {
+                // 🔹 Always prefer latest image from userProfiles (live Firebase updates)
+                val latestProfileBase64 = userProfiles[c.userId] ?: c.profileImageBase64
+
+                if (!latestProfileBase64.isNullOrEmpty()) {
                     try {
-                        val bytes = android.util.Base64.decode(
-                            c.profileImageBase64,
-                            android.util.Base64.DEFAULT
-                        )
+                        val cleaned = if (latestProfileBase64.contains(",")) latestProfileBase64.substringAfter(",") else latestProfileBase64
+                        val bytes = android.util.Base64.decode(cleaned, android.util.Base64.DEFAULT)
                         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                         ivProfile.setImageBitmap(bitmap)
                     } catch (e: Exception) {
@@ -283,6 +291,7 @@ class PostAdapter(
                 commentsSection.addView(commentView)
             }
         }
+
 
         // ---------- COMMENT VISIBILITY ----------
         commentsSection.visibility = View.GONE
@@ -300,41 +309,66 @@ class PostAdapter(
                 if (inputBar.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
 
+
+
+
+
         // ---------- ADD NEW COMMENT ----------
 
         btnPost.setOnClickListener {
-
-
             val commentText = etComment.text.toString().trim()
+
             if (commentText.isNotEmpty()) {
                 val newComment = comment(
+                    userId = currentUserId,
                     profileImageBase64 = currentUserProfileBase64,
                     username = currentUsername,
                     text = commentText
                 )
 
+                // Add locally first
                 post.comments?.add(newComment) ?: run {
                     post.comments = mutableListOf(newComment)
                 }
 
+                // Instantly show in UI (no Firebase delay)
+                val commentView = inflater.inflate(R.layout.item_comment, commentsSection, false)
+                val ivProfile = commentView.findViewById<ImageView>(R.id.ivCommentProfile)
+                val tvUsername = commentView.findViewById<TextView>(R.id.tvCommentUsername)
+                val tvText = commentView.findViewById<TextView>(R.id.tvCommentText)
+
+                tvUsername.text = currentUsername
+                tvText.text = commentText
+
+                if (!currentUserProfileBase64.isNullOrEmpty()) {
+                    try {
+                        val bytes = android.util.Base64.decode(currentUserProfileBase64, android.util.Base64.DEFAULT)
+                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        ivProfile.setImageBitmap(bitmap)
+                    } catch (e: Exception) {
+                        ivProfile.setImageResource(R.drawable.profile)
+                    }
+                } else {
+                    ivProfile.setImageResource(R.drawable.profile)
+                }
+
+                commentsSection.addView(commentView)
+
+                // Clear input instantly
+                etComment.text.clear()
                 inputBar.visibility = View.GONE
 
+                // Save to Firebase
                 val postRef = FirebaseDatabase.getInstance()
                     .getReference("Posts")
                     .child(post.postId ?: return@setOnClickListener)
 
                 postRef.child("comments").setValue(post.comments)
                     .addOnSuccessListener {
-                        etComment.text.clear()
-                        inputBar.visibility = View.GONE
                         notifyItemChanged(position)
                     }
                     .addOnFailureListener { e ->
-                        Toast.makeText(
-                            context,
-                            "Failed to add comment: ${e.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(context, "Failed to add comment: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
             }
         }
@@ -344,6 +378,10 @@ class PostAdapter(
             inputBar.visibility = View.GONE
         }
     }
+
+
+
+
 
     // ---------- LIKE TOGGLE ----------
     private fun toggleLike(post: Post, holder: PostViewHolder) {
@@ -393,6 +431,22 @@ class PostAdapter(
                     Toast.LENGTH_SHORT
                 ).show()
             }
+    }
+
+
+    fun updateUserProfiles(newProfiles: Map<String, String>) {
+        userProfiles.clear()
+        userProfiles.putAll(newProfiles)
+
+        // 🔹 Refresh all posts and nested comments instantly
+        posts.forEach { post ->
+            post.profileImageUrl = userProfiles[post.userId] ?: post.profileImageUrl
+            post.comments?.forEach { c ->
+                c.profileImageBase64 = userProfiles[c.userId] ?: c.profileImageBase64
+            }
+        }
+
+        notifyDataSetChanged()
     }
 
 }

@@ -96,6 +96,8 @@ class main_feed : BaseActivity() {
         TopBar()
         requestNotificationPermission()
         startIncomingCallService()
+        startUserProfileListener()
+
 
         //Register STORY_UPDATED receiver
         val updateFilter = IntentFilter("com.example.smd_assignment_i230796.STORY_UPDATED")
@@ -304,10 +306,30 @@ class main_feed : BaseActivity() {
             Toast.makeText(this, "❌ Failed to load posts: ${it.message}", Toast.LENGTH_SHORT).show()
         }
     }
+
+
     private fun setupPostsRecycler() {
         val database = FirebaseDatabase.getInstance()
         val postsRef = database.getReference("Posts")
         val usersRef = database.getReference("Users")
+        // 🔹 Listen for all user profile changes (profileImage updates)
+        usersRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                userProfiles.clear()
+                for (userSnap in snapshot.children) {
+                    val uid = userSnap.key ?: continue
+                    val profileBase64 = userSnap.child("profileImage").getValue(String::class.java) ?: ""
+                    userProfiles[uid] = profileBase64
+                }
+                // Refresh posts when any profile changes
+                if (::postAdapter.isInitialized) {
+                    postAdapter.updateUserProfiles(userProfiles)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
 
         val currentUser = FirebaseAuth.getInstance().currentUser
         val currentUserId = currentUser?.uid ?: ""
@@ -356,7 +378,8 @@ class main_feed : BaseActivity() {
                                     this@main_feed,
                                     posts,
                                     currentUsername,
-                                    currentUserProfileBase64
+                                    currentUserProfileBase64,
+                                    userProfiles
                                 )
                                 binding.rvPosts.layoutManager = LinearLayoutManager(this@main_feed)
                                 binding.rvPosts.adapter = postAdapter
@@ -397,6 +420,30 @@ class main_feed : BaseActivity() {
             }
         })
     }
+
+    // 🔹 Listen for live user profile updates
+    private val userProfiles = mutableMapOf<String, String>()
+
+    private fun startUserProfileListener() {
+        val usersRef = FirebaseDatabase.getInstance().getReference("Users")
+        usersRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                userProfiles.clear()
+                for (userSnap in snapshot.children) {
+                    val uid = userSnap.key ?: continue
+                    val profileBase64 = userSnap.child("profileImage").getValue(String::class.java) ?: ""
+                    userProfiles[uid] = profileBase64
+                }
+
+                // 🔹 Push updated profiles to adapters (posts + comments)
+                if (::postAdapter.isInitialized) postAdapter.updateUserProfiles(userProfiles)
+                if (::storyAdapter.isInitialized) storyAdapter.notifyDataSetChanged()
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
     private fun startIncomingCallService() {
         val userRef = FirebaseDatabase.getInstance().getReference("Users").child(currentUserId)
         userRef.get()
