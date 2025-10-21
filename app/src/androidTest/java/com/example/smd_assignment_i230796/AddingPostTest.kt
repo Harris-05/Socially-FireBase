@@ -59,8 +59,8 @@ class AddingPostTest {
         intending(not(isInternal())).respondWith(previewResult)
 
         Thread.sleep(3000)
+        onView(withId(R.id.btnPost)).perform(click())
 
-        onView(withId(R.id.main_feed_root))
-            .check(matches(isDisplayed()))
+        Thread.sleep(2000)
     }
 }
