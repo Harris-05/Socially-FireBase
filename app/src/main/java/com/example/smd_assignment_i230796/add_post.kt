@@ -21,7 +21,7 @@ class add_post : BaseActivity() {
         registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
             if (!uris.isNullOrEmpty()) openImagePreview(uris)
         }
-
+    //change
     private val postPreviewLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
